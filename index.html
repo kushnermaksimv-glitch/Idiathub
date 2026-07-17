@@ -3,76 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Idiahub - Без регистрации</title>
+    <title>LiteTube - Realtime Версия</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #121212; color: #fff; padding-bottom: 60px; }
         header { background: #202020; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { color: #ff0000; }
-        .btn { background: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        h1 { color: #ff0000; font-size: 20px; }
+        .btn { background: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 15px; }
-        .video-card { background: #1e1e1e; border-radius: 8px; overflow: hidden; }
+        .video-card { background: #1e1e1e; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         video { width: 100%; aspect-ratio: 16/9; background: #000; }
-        .video-info { padding: 12px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
-        .modal-content { background: #202020; padding: 20px; border-radius: 8px; width: 300px; display: flex; flex-direction: column; gap: 10px; }
+        .video-info { padding: 12px; font-weight: bold; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: #202020; padding: 20px; border-radius: 8px; width: 100%; max-width: 350px; display: flex; flex-direction: column; gap: 15px; }
+        .modal-content input { width: 100%; padding: 10px; background: #303030; border: 1px solid #444; color: white; border-radius: 4px; }
+        #status { text-align: center; color: #00ffcc; font-weight: bold; }
     </style>
 </head>
 <body>
+
     <header>
         <h1>LiteTube</h1>
         <button class="btn" onclick="toggleModal('uploadModal')">+ Видео</button>
     </header>
 
-    <main class="video-grid" id="videoGrid">Загрузка...</main>
+    <main class="video-grid" id="videoGrid">
+        <div style="text-align: center; grid-column: 1/-1; color: #aaa; padding: 40px;">Загрузка ленты...</div>
+    </main>
 
     <div id="uploadModal" class="modal">
         <div class="modal-content">
-            <h3>Загрузка</h3>
-            <input type="text" id="videoTitleInput" placeholder="Название" style="padding:10px;">
+            <h3>Загрузить видео (до 1 МБ)</h3>
+            <input type="text" id="videoTitleInput" placeholder="Название видео">
             <input type="file" id="videoFileInput" accept="video/*">
-            <button class="btn" onclick="uploadVideoAsText()">Опубликовать</button>
-            <button onclick="toggleModal('uploadModal')" style="background:none; border:none; color:#aaa; cursor:pointer;">Закрыть</button>
+            <div id="status"></div>
+            <button class="btn" onclick="uploadVideoRealtime()">Опубликовать</button>
+            <button class="btn" style="background:#383838;" onclick="toggleModal('uploadModal')">Закрыть</button>
         </div>
     </div>
 
+    <!-- Подключаем модули Firebase (App и Realtime Database) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // Твоя конфигурация
         const firebaseConfig = {
             apiKey: "AIzaSyBUYZ4EPbiqApxTfe_dEjQl5eCL3tb1lM4",
             authDomain: "fir-bd773.firebaseapp.com",
+            databaseURL: "https://fir-bd773-default-rtdb.firebaseio.com",
             projectId: "fir-bd773",
             storageBucket: "fir-bd773.firebasestorage.app",
             messagingSenderId: "301271941690",
             appId: "1:301271941690:web:3bcb2a78e346060f866b03"
         };
 
-        const db = getFirestore(initializeApp(firebaseConfig));
+        // Инициализируем приложение и Realtime Database
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-        window.uploadVideoAsText = async () => {
+        // Функция конвертации файла в текст
+        const fileToText = (file) => new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+        });
+
+        // Загрузка видео в базу данных
+        window.uploadVideoRealtime = async () => {
             const title = document.getElementById('videoTitleInput').value;
             const file = document.getElementById('videoFileInput').files[0];
-            const reader = new FileReader();
-            
-            reader.onload = async () => {
-                await addDoc(collection(db, "videos"), { title, videoUrl: reader.result, author: "Гость", createdAt: Date.now() });
-                location.reload();
-            };
-            reader.readAsDataURL(file);
+            const statusDiv = document.getElementById('status');
+
+            if (!title || !file) return alert('Заполните все поля!');
+            if (file.size > 1048576) return alert('Размер файла больше 1 МБ!');
+
+            statusDiv.innerText = 'Конвертируем в текст...';
+
+            try {
+                const base64Text = await fileToText(file);
+                statusDiv.innerText = 'Отправка в базу...';
+
+                // Создаем новую запись в ветке "videos"
+                const videoListRef = ref(db, 'videos');
+                const newVideoRef = push(videoListRef);
+                
+                await set(newVideoRef, {
+                    title: title,
+                    videoUrl: base64Text,
+                    createdAt: Date.now()
+                });
+
+                statusDiv.innerText = 'Успешно создано!';
+                document.getElementById('videoTitleInput').value = '';
+                document.getElementById('videoFileInput').value = '';
+                setTimeout(() => toggleModal('uploadModal'), 1000);
+
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+                statusDiv.innerText = '';
+            }
         };
 
-        async function loadVideos() {
-            const snap = await getDocs(query(collection(db, "videos"), orderBy("createdAt", "desc")));
-            document.getElementById('videoGrid').innerHTML = '';
-            snap.forEach(doc => {
-                const d = doc.data();
-                document.getElementById('videoGrid').innerHTML += `<div class="video-card"><video src="${d.videoUrl}" controls></video><div class="video-info">${d.title}</div></div>`;
+        // Получение видео в реальном времени и обновление ленты
+        const videoGrid = document.getElementById('videoGrid');
+        const videosRef = ref(db, 'videos');
+
+        onValue(videosRef, (snapshot) => {
+            videoGrid.innerHTML = '';
+            if (!snapshot.exists()) {
+                videoGrid.innerHTML = '<div style="text-align: center; grid-column: 1/-1; color: #aaa; padding: 40px;">Видео пока нет</div>';
+                return;
+            }
+
+            const data = snapshot.val();
+            // Сортируем видео: новые сверху
+            const sortedVideos = Object.values(data).sort((a, b) => b.createdAt - a.createdAt);
+
+            sortedVideos.forEach((video) => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <video src="${video.videoUrl}" controls playsinline></video>
+                    <div class="video-info">${video.title}</div>
+                `;
+                videoGrid.appendChild(card);
             });
-        }
-        window.toggleModal = (id) => { document.getElementById(id).style.display = document.getElementById(id).style.display === 'flex' ? 'none' : 'flex'; };
-        loadVideos();
+        });
+
+        window.toggleModal = (id) => {
+            const modal = document.getElementById(id);
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            document.getElementById('status').innerText = '';
+        };
     </script>
 </body>
 </html>
