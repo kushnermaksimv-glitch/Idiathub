@@ -1,0 +1,158 @@
+    <!-- Firebase SDK модули со вставленными ключами -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ТВОЯ АКТУАЛЬНАЯ КОНФИГУРАЦИЯ FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBUYZ4EPbiqApxTfe_dEjQl5eCL3tb1lM4",
+            authDomain: "fir-bd773.firebaseapp.com",
+            databaseURL: "https://fir-bd773-default-rtdb.firebaseio.com",
+            projectId: "fir-bd773",
+            storageBucket: "fir-bd773.firebasestorage.app",
+            messagingSenderId: "301271941690",
+            appId: "1:301271941690:web:3bcb2a78e346060f866b03",
+            measurementId: "G-B1EDZY44JV"
+        };
+
+        // Инициализация сервисов
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app); // Подключаем Firestore
+
+        let currentUser = null;
+
+        // Следим за пользователем (авторизован или нет)
+        onAuthStateChanged(auth, (user) => {
+            const authBtn = document.getElementById('authBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            if (user) {
+                currentUser = user;
+                authBtn.innerText = `Выйти (${user.email.split('@')[0]})`;
+                authBtn.onclick = () => signOut(auth);
+                uploadBtn.style.display = 'block';
+            } else {
+                currentUser = null;
+                authBtn.innerText = 'Войти';
+                authBtn.onclick = () => toggleModal('authModal');
+                uploadBtn.style.display = 'none';
+            }
+        });
+
+        // Логика авторизации
+        window.handleAuth = async (type) => {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            if(!email || !password) return alert('Введите почту и пароль!');
+            try {
+                if (type === 'register') {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    alert('Успешная регистрация!');
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+                toggleModal('authModal');
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        };
+
+        // Перевод видеофайла в текстовую строку Base64
+        const fileToText = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+        });
+
+        // Функция обработки и отправки текста в Firestore
+        window.uploadVideoAsText = async () => {
+            const title = document.getElementById('videoTitleInput').value;
+            const file = document.getElementById('videoFileInput').files[0];
+            const statusDiv = document.getElementById('uploadStatus');
+
+            if (!title || !file) return alert('Заполните все поля!');
+            if (!currentUser) return alert('Вы не авторизованы!');
+
+            // Ограничение на размер текстового документа в Firestore (1 МБ)
+            if (file.size > 1048576) { 
+                return alert('Файл больше 1 МБ! Сделайте видео покоче или сожмите его (например, через онлайн-компрессор).');
+            }
+
+            statusDiv.innerText = 'Обработка видео в текст...';
+
+            try {
+                // Переводим файл в текст
+                const encodedVideo = await fileToText(file);
+                
+                statusDiv.innerText = 'Сохранение в Firestore...';
+
+                // Записываем текстовый массив в Firestore Database
+                await addDoc(collection(db, "videos"), {
+                    title: title,
+                    videoUrl: encodedVideo, // Храним само видео в виде текста
+                    author: currentUser.email.split('@')[0],
+                    createdAt: Date.now()
+                });
+
+                statusDiv.innerText = 'Успешно опубликовано!';
+                document.getElementById('videoTitleInput').value = '';
+                document.getElementById('videoFileInput').value = '';
+                
+                setTimeout(() => {
+                    toggleModal('uploadModal');
+                    loadVideos();
+                }, 1000);
+
+            } catch (error) {
+                alert('Ошибка отправки: ' + error.message);
+                statusDiv.innerText = '';
+            }
+        };
+
+        // Загрузка текстовых видеороликов из Firestore и отображение на сайте
+        async function loadVideos() {
+            const videoGrid = document.getElementById('videoGrid');
+            try {
+                const q = query(collection(db, "videos"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                videoGrid.innerHTML = '';
+                
+                if(querySnapshot.empty) {
+                    videoGrid.innerHTML = '<div style="text-align: center; grid-column: 1/-1; color: #aaa; padding: 40px;">Видео пока нет. Стань первым!</div>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const card = document.createElement('div');
+                    card.className = 'video-card';
+                    card.innerHTML = `
+                        <video src="${data.videoUrl}" controls playsinline preload="metadata"></video>
+                        <div class="video-info">
+                            <div class="video-title">${data.title}</div>
+                            <div class="video-author">От: ${data.author}</div>
+                        </div>
+                    `;
+                    videoGrid.appendChild(card);
+                });
+            } catch (e) {
+                videoGrid.innerHTML = '<div style="text-align: center; grid-column: 1/-1; color: #ff4444; padding: 40px;">Ошибка загрузки ленты. Убедись, что база Cloud Firestore создана в тестовом режиме!</div>';
+                console.error(e);
+            }
+        }
+
+        // Переключатель окон
+        window.toggleModal = (id) => {
+            const modal = document.getElementById(id);
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            document.getElementById('uploadStatus').innerText = '';
+        };
+
+        // Первичный запуск ленты при открытии сайта
+        loadVideos();
+    </script>
+</body>
+</html>
