@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LiteTube - Realtime Версия</title>
+    <title>LiteTube - Видео по ссылкам</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #121212; color: #fff; padding-bottom: 60px; }
@@ -24,7 +24,7 @@
 
     <header>
         <h1>LiteTube</h1>
-        <button class="btn" onclick="toggleModal('uploadModal')">+ Видео</button>
+        <button class="btn" onclick="toggleModal('uploadModal')">+ Добавить ссылку</button>
     </header>
 
     <main class="video-grid" id="videoGrid">
@@ -33,21 +33,19 @@
 
     <div id="uploadModal" class="modal">
         <div class="modal-content">
-            <h3>Загрузить видео (до 1 МБ)</h3>
+            <h3>Добавить видео по ссылке</h3>
             <input type="text" id="videoTitleInput" placeholder="Название видео">
-            <input type="file" id="videoFileInput" accept="video/*">
+            <input type="text" id="videoUrlInput" placeholder="Ссылка на видео (mp4, youtube и др.)">
             <div id="status"></div>
-            <button class="btn" onclick="uploadVideoRealtime()">Опубликовать</button>
+            <button class="btn" onclick="uploadVideoUrl()">Опубликовать</button>
             <button class="btn" style="background:#383838;" onclick="toggleModal('uploadModal')">Закрыть</button>
         </div>
     </div>
 
-    <!-- Подключаем модули Firebase (App и Realtime Database) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Твоя конфигурация
         const firebaseConfig = {
             apiKey: "AIzaSyBUYZ4EPbiqApxTfe_dEjQl5eCL3tb1lM4",
             authDomain: "fir-bd773.firebaseapp.com",
@@ -58,45 +56,31 @@
             appId: "1:301271941690:web:3bcb2a78e346060f866b03"
         };
 
-        // Инициализируем приложение и Realtime Database
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Функция конвертации файла в текст
-        const fileToText = (file) => new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-        });
-
-        // Загрузка видео в базу данных
-        window.uploadVideoRealtime = async () => {
+        window.uploadVideoUrl = async () => {
             const title = document.getElementById('videoTitleInput').value;
-            const file = document.getElementById('videoFileInput').files[0];
+            const url = document.getElementById('videoUrlInput').value;
             const statusDiv = document.getElementById('status');
 
-            if (!title || !file) return alert('Заполните все поля!');
-            if (file.size > 1048576) return alert('Размер файла больше 1 МБ!');
+            if (!title || !url) return alert('Заполните все поля!');
 
-            statusDiv.innerText = 'Конвертируем в текст...';
+            statusDiv.innerText = 'Публикация...';
 
             try {
-                const base64Text = await fileToText(file);
-                statusDiv.innerText = 'Отправка в базу...';
-
-                // Создаем новую запись в ветке "videos"
                 const videoListRef = ref(db, 'videos');
                 const newVideoRef = push(videoListRef);
                 
                 await set(newVideoRef, {
                     title: title,
-                    videoUrl: base64Text,
+                    videoUrl: url,
                     createdAt: Date.now()
                 });
 
-                statusDiv.innerText = 'Успешно создано!';
+                statusDiv.innerText = 'Успешно добавлено!';
                 document.getElementById('videoTitleInput').value = '';
-                document.getElementById('videoFileInput').value = '';
+                document.getElementById('videoUrlInput').value = '';
                 setTimeout(() => toggleModal('uploadModal'), 1000);
 
             } catch (error) {
@@ -105,7 +89,6 @@
             }
         };
 
-        // Получение видео в реальном времени и обновление ленты
         const videoGrid = document.getElementById('videoGrid');
         const videosRef = ref(db, 'videos');
 
@@ -115,18 +98,24 @@
                 videoGrid.innerHTML = '<div style="text-align: center; grid-column: 1/-1; color: #aaa; padding: 40px;">Видео пока нет</div>';
                 return;
             }
-
             const data = snapshot.val();
-            // Сортируем видео: новые сверху
             const sortedVideos = Object.values(data).sort((a, b) => b.createdAt - a.createdAt);
 
             sortedVideos.forEach((video) => {
                 const card = document.createElement('div');
                 card.className = 'video-card';
-                card.innerHTML = `
-                    <video src="${video.videoUrl}" controls playsinline></video>
-                    <div class="video-info">${video.title}</div>
-                `;
+                
+                // Проверяем, это обычный файл или YouTube
+                let playerHtml = `<video src="${video.videoUrl}" controls playsinline preload="metadata"></video>`;
+                if (video.videoUrl.includes('youtube.com') || video.videoUrl.includes('youtu.be')) {
+                    let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    let match = video.videoUrl.match(regExp);
+                    if (match && match[2].length == 11) {
+                        playerHtml = `<iframe src="https://www.youtube.com/embed/${match[2]}" style="width:100%; aspect-ratio:16/9; border:none;" allowfullscreen></iframe>`;
+                    }
+                }
+
+                card.innerHTML = `${playerHtml}<div class="video-info">${video.title}</div>`;
                 videoGrid.appendChild(card);
             });
         });
