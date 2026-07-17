@@ -3,152 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LiteTube - Текстовый Видеохостинг</title>
+    <title>Idiahub - Без регистрации</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #121212; color: #fff; padding-bottom: 60px; }
-        header { background: #202020; padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        h1 { color: #ff0000; font-size: 20px; }
-        .btn { background: #ff0000; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-secondary { background: #383838; }
-        
+        header { background: #202020; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { color: #ff0000; }
+        .btn { background: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 15px; }
-        .video-card { background: #1e1e1e; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        video { width: 100%; background: #000; aspect-ratio: 16/9; }
+        .video-card { background: #1e1e1e; border-radius: 8px; overflow: hidden; }
+        video { width: 100%; aspect-ratio: 16/9; background: #000; }
         .video-info { padding: 12px; }
-        .video-title { font-size: 16px; font-weight: bold; margin-bottom: 5px; color: #fff; }
-        .video-author { font-size: 13px; color: #aaa; }
-
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; padding: 20px; }
-        .modal-content { background: #202020; padding: 20px; border-radius: 8px; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
-        .modal-content input { width: 100%; padding: 10px; background: #303030; border: 1px solid #444; color: white; border-radius: 4px; }
-        #uploadStatus { font-size: 14px; color: #00ffcc; text-align: center; font-weight: bold; min-height: 20px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
+        .modal-content { background: #202020; padding: 20px; border-radius: 8px; width: 300px; display: flex; flex-direction: column; gap: 10px; }
     </style>
 </head>
 <body>
-
     <header>
         <h1>LiteTube</h1>
-        <div>
-            <button class="btn btn-secondary" id="authBtn" onclick="toggleModal('authModal')">Войти</button>
-            <button class="btn" id="uploadBtn" onclick="toggleModal('uploadModal')" style="display:none;">+ Видео</button>
-        </div>
+        <button class="btn" onclick="toggleModal('uploadModal')">+ Видео</button>
     </header>
 
-    <main class="video-grid" id="videoGrid">
-        <div style="text-align: center; grid-column: 1/-1; color: #aaa; padding: 40px;">Загрузка ленты...</div>
-    </main>
-
-    <div id="authModal" class="modal">
-        <div class="modal-content">
-            <h3>Вход / Регистрация</h3>
-            <input type="email" id="authEmail" placeholder="Email">
-            <input type="password" id="authPassword" placeholder="Пароль">
-            <button class="btn" onclick="handleAuth('login')">Войти</button>
-            <button class="btn btn-secondary" onclick="handleAuth('register')">Создать аккаунт</button>
-            <button class="btn btn-secondary" onclick="toggleModal('authModal')">Закрыть</button>
-        </div>
-    </div>
+    <main class="video-grid" id="videoGrid">Загрузка...</main>
 
     <div id="uploadModal" class="modal">
         <div class="modal-content">
-            <h3>Опубликовать (до 1 МБ)</h3>
-            <input type="text" id="videoTitleInput" placeholder="Название" required>
-            <input type="file" id="videoFileInput" accept="video/*" required>
-            <div id="uploadStatus"></div>
-            <button class="btn" onclick="uploadVideoAsText()">Конвертировать и залить</button>
-            <button class="btn btn-secondary" onclick="toggleModal('uploadModal')">Отмена</button>
+            <h3>Загрузка</h3>
+            <input type="text" id="videoTitleInput" placeholder="Название" style="padding:10px;">
+            <input type="file" id="videoFileInput" accept="video/*">
+            <button class="btn" onclick="uploadVideoAsText()">Опубликовать</button>
+            <button onclick="toggleModal('uploadModal')" style="background:none; border:none; color:#aaa; cursor:pointer;">Закрыть</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBUYZ4EPbiqApxTfe_dEjQl5eCL3tb1lM4",
             authDomain: "fir-bd773.firebaseapp.com",
-            databaseURL: "https://fir-bd773-default-rtdb.firebaseio.com",
             projectId: "fir-bd773",
             storageBucket: "fir-bd773.firebasestorage.app",
             messagingSenderId: "301271941690",
-            appId: "1:301271941690:web:3bcb2a78e346060f866b03",
-            measurementId: "G-B1EDZY44JV"
+            appId: "1:301271941690:web:3bcb2a78e346060f866b03"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        let currentUser = null;
-
-        onAuthStateChanged(auth, (user) => {
-            const authBtn = document.getElementById('authBtn');
-            const uploadBtn = document.getElementById('uploadBtn');
-            if (user) {
-                currentUser = user;
-                authBtn.innerText = `Выйти`;
-                authBtn.onclick = () => signOut(auth);
-                uploadBtn.style.display = 'block';
-            } else {
-                currentUser = null;
-                authBtn.innerText = 'Войти';
-                authBtn.onclick = () => toggleModal('authModal');
-                uploadBtn.style.display = 'none';
-            }
-        });
-
-        window.handleAuth = async (type) => {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            try {
-                if (type === 'register') await createUserWithEmailAndPassword(auth, email, password);
-                else await signInWithEmailAndPassword(auth, email, password);
-                toggleModal('authModal');
-            } catch (e) { alert(e.message); }
-        };
-
-        const fileToText = (file) => new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-        });
+        const db = getFirestore(initializeApp(firebaseConfig));
 
         window.uploadVideoAsText = async () => {
             const title = document.getElementById('videoTitleInput').value;
             const file = document.getElementById('videoFileInput').files[0];
-            const statusDiv = document.getElementById('uploadStatus');
-
-            if (file.size > 1048576) return alert('Файл > 1 МБ!');
-            statusDiv.innerText = 'Конвертация...';
+            const reader = new FileReader();
             
-            try {
-                const encoded = await fileToText(file);
-                await addDoc(collection(db, "videos"), { title, videoUrl: encoded, author: currentUser.email.split('@')[0], createdAt: Date.now() });
-                statusDiv.innerText = 'Готово!';
-                setTimeout(() => { toggleModal('uploadModal'); loadVideos(); }, 1000);
-            } catch (e) { alert(e.message); }
+            reader.onload = async () => {
+                await addDoc(collection(db, "videos"), { title, videoUrl: reader.result, author: "Гость", createdAt: Date.now() });
+                location.reload();
+            };
+            reader.readAsDataURL(file);
         };
 
         async function loadVideos() {
-            const videoGrid = document.getElementById('videoGrid');
-            const q = query(collection(db, "videos"), orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
-            videoGrid.innerHTML = '';
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                const card = document.createElement('div');
-                card.className = 'video-card';
-                card.innerHTML = `<video src="${data.videoUrl}" controls playsinline></video><div class="video-info"><div class="video-title">${data.title}</div><div class="video-author">Автор: ${data.author}</div></div>`;
-                videoGrid.appendChild(card);
+            const snap = await getDocs(query(collection(db, "videos"), orderBy("createdAt", "desc")));
+            document.getElementById('videoGrid').innerHTML = '';
+            snap.forEach(doc => {
+                const d = doc.data();
+                document.getElementById('videoGrid').innerHTML += `<div class="video-card"><video src="${d.videoUrl}" controls></video><div class="video-info">${d.title}</div></div>`;
             });
         }
-
-        window.toggleModal = (id) => {
-            const modal = document.getElementById(id);
-            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
-        };
-
+        window.toggleModal = (id) => { document.getElementById(id).style.display = document.getElementById(id).style.display === 'flex' ? 'none' : 'flex'; };
         loadVideos();
     </script>
 </body>
