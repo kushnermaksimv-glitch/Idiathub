@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Idiathub 3.0 - Вечные Аккаунты</title>
+    <title>Idiathub 3.0 - Исправленный</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #121212; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -83,16 +83,16 @@
             <h2>Вход в Idiathub</h2>
             <input type="text" id="loginUser" placeholder="Логин (Имя)">
             <input type="password" id="loginPass" placeholder="Пароль">
-            <button class="btn" onclick="authLogin()">Войти</button>
-            <button class="secondary-btn" onclick="toggleAuthForms(true)">Регистрация нового аккаунта</button>
+            <button class="btn" id="btnLoginAction">Войти</button>
+            <button class="secondary-btn" id="btnGoToReg">Регистрация нового аккаунта</button>
         </div>
         
         <div class="auth-box" id="regForm" style="display: none;">
             <h2>Создать вечный аккаунт</h2>
             <input type="text" id="regUser" placeholder="Придумайте Логин">
             <input type="password" id="regPass" placeholder="Придумайте Пароль">
-            <button class="btn" onclick="authRegister()">Зарегистрироваться</button>
-            <button class="secondary-btn" onclick="toggleAuthForms(false)">Назад ко входу</button>
+            <button class="btn" id="btnRegAction">Зарегистрироваться</button>
+            <button class="secondary-btn" id="btnGoToLogin">Назад ко входу</button>
         </div>
     </div>
 
@@ -105,7 +105,7 @@
     <div class="content-container">
         <!-- Лента -->
         <section id="feedPage" class="content-page">
-            <button class="btn" style="align-self: flex-end; margin-bottom: 12px;" onclick="toggleModal('uploadModal', 'global')">+ Добавить пост в ленту</button>
+            <button class="btn" id="btnOpenGlobalUpload" style="align-self: flex-end; margin-bottom: 12px;">+ Добавить пост в ленту</button>
             <div id="globalFeedGrid"></div>
         </section>
 
@@ -117,10 +117,10 @@
 
         <!-- Конкретный канал -->
         <section id="singleChannelPage" class="content-page">
-            <button class="secondary-btn" style="align-self:flex-start; margin-bottom:15px;" onclick="switchTab('channels')">← Назад к каналам</button>
+            <button class="secondary-btn" id="btnBackToChannels" style="align-self:flex-start; margin-bottom:15px;">← Назад к каналам</button>
             <h2 id="channelViewTitle" style="color:#00ffcc; margin-bottom:2px;">Канал</h2>
             <p id="channelViewStatus" style="color:#aaa; font-size:13px; font-style:italic; margin-bottom:15px;"></p>
-            <button class="btn" id="channelUploadBtn" style="align-self: flex-end; margin-bottom: 15px; display:none;" onclick="toggleModal('uploadModal', 'channel')">+ Загрузить на свой канал</button>
+            <button class="btn" id="channelUploadBtn" style="align-self: flex-end; margin-bottom: 15px; display:none;">+ Загрузить на свой канал</button>
             <div id="channelFeedGrid"></div>
         </section>
 
@@ -128,8 +128,8 @@
         <section id="chatPage" class="content-page">
             <div id="messages"></div>
             <div id="inputArea">
-                <input type="text" id="msgInput" placeholder="Написать..." onkeydown="if(event.key==='Enter') sendMsg()">
-                <button class="btn" onclick="sendMsg()">></button>
+                <input type="text" id="msgInput" placeholder="Написать...">
+                <button class="btn" id="btnSendMsg">></button>
             </div>
         </section>
 
@@ -143,18 +143,18 @@
                     <label>Цвет никнейма:</label>
                     <input type="color" id="colorInput" value="#ff3333">
                 </div>
-                <button class="btn" onclick="saveProfile()">Сохранить</button>
-                <button class="btn" style="background:#ff3333; color:white; margin-top:20px;" onclick="logOut()">Выйти из системы</button>
+                <button class="btn" id="btnSaveProfile">Сохранить</button>
+                <button class="btn" id="btnLogoutAction" style="background:#ff3333; color:white; margin-top:20px;">Выйти из системы</button>
             </div>
         </section>
     </div>
 
     <!-- Навигация снизу -->
     <nav class="bottom-nav" id="mainNav">
-        <button class="tab-btn active" onclick="switchTab('feed')">📱 Лента</button>
-        <button class="tab-btn" onclick="switchTab('channels')">📺 Каналы</button>
-        <button class="tab-btn" onclick="switchTab('chat')">💬 Чат</button>
-        <button class="tab-btn" onclick="switchTab('profile')">⚙️ Профиль</button>
+        <button class="tab-btn active" id="tabBtnFeed">📱 Лента</button>
+        <button class="tab-btn" id="tabBtnChannels">📺 Каналы</button>
+        <button class="tab-btn" id="tabBtnChat">💬 Чат</button>
+        <button class="tab-btn" id="tabBtnProfile">⚙️ Профиль</button>
     </nav>
 
     <!-- Модалка загрузки -->
@@ -168,8 +168,8 @@
             <div style="text-align: center; color: #888; font-size: 11px;">— ИЛИ —</div>
             <input type="text" id="vUrl" placeholder="Ссылка на YouTube или медиафайл">
             <div id="uploadStatus" style="text-align:center; color:#00ffcc; font-size:13px;"></div>
-            <button class="btn" id="publishBtn" onclick="addPost()">Выложить</button>
-            <button class="btn" style="background:#383838; color:white;" onclick="toggleModal('uploadModal')">Отмена</button>
+            <button class="btn" id="publishBtn">Выложить</button>
+            <button class="btn" id="btnCloseUploadModal" style="background:#383838; color:white;">Отмена</button>
         </div>
     </div>
 
@@ -193,6 +193,27 @@
         let currentUploadScope = 'global';
         let isInitialChatLoad = true;
 
+        // Привязка событий после загрузки модулей
+        document.getElementById('btnGoToReg').addEventListener('click', () => toggleAuthForms(true));
+        document.getElementById('btnGoToLogin').addEventListener('click', () => toggleAuthForms(false));
+        document.getElementById('btnRegAction').addEventListener('click', () => authRegister());
+        document.getElementById('btnLoginAction').addEventListener('click', () => authLogin());
+        document.getElementById('btnLogoutAction').addEventListener('click', () => logOut());
+        document.getElementById('btnSaveProfile').addEventListener('click', () => saveProfile());
+        
+        document.getElementById('tabBtnFeed').addEventListener('click', () => switchTab('feed'));
+        document.getElementById('tabBtnChannels').addEventListener('click', () => switchTab('channels'));
+        document.getElementById('tabBtnChat').addEventListener('click', () => switchTab('chat'));
+        document.getElementById('tabBtnProfile').addEventListener('click', () => switchTab('profile'));
+        document.getElementById('btnBackToChannels').addEventListener('click', () => switchTab('channels'));
+
+        document.getElementById('btnOpenGlobalUpload').addEventListener('click', () => toggleModal('uploadModal', 'global'));
+        document.getElementById('channelUploadBtn').addEventListener('click', () => toggleModal('uploadModal', 'channel'));
+        document.getElementById('btnCloseUploadModal').addEventListener('click', () => toggleModal('uploadModal'));
+        document.getElementById('publishBtn').addEventListener('click', () => addPost());
+        document.getElementById('btnSendMsg').addEventListener('click', () => sendMsg());
+        document.getElementById('msgInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') sendMsg(); });
+
         if (currentUser) enterApp();
 
         function enterApp() {
@@ -209,13 +230,12 @@
             loadChat();
         }
 
-        window.toggleAuthForms = (showReg) => {
+        function toggleAuthForms(showReg) {
             document.getElementById('loginForm').style.display = showReg ? 'none' : 'flex';
             document.getElementById('regForm').style.display = showReg ? 'flex' : 'none';
-        };
+        }
 
-        // ВЕЧНАЯ РЕГИСТРАЦИЯ НА СЕРВЕРЕ БАЗЫ
-        window.authRegister = async () => {
+        async function authRegister() {
             const user = document.getElementById('regUser').value.trim();
             const pass = document.getElementById('regPass').value.trim();
             if(!user || !pass) return alert('Заполните все поля!');
@@ -224,16 +244,14 @@
             const snapshot = await get(ref(db, 'users/' + user));
             if(snapshot.exists()) return alert('Этот логин уже занят кем-то другим!');
 
-            // Сохраняем в облако навсегда
             await set(ref(db, 'users/' + user), { password: pass, status: "Всем привет!", chatColor: "#00ffcc" });
             
             currentUser = user;
             localStorage.setItem('idiathub_user', currentUser);
             enterApp();
-        };
+        }
 
-        // НАДЕЖНЫЙ ВХОД ЧЕРЕЗ СВЕРКУ С ОБЛАКОМ
-        window.authLogin = async () => {
+        async function authLogin() {
             const user = document.getElementById('loginUser').value.trim();
             const pass = document.getElementById('loginPass').value.trim();
             if(!user || !pass) return alert('Введите данные!');
@@ -244,12 +262,12 @@
                 localStorage.setItem('idiathub_user', currentUser);
                 enterApp();
             } else { alert('Неверный логин или пароль!'); }
-        };
+        }
 
-        window.logOut = () => {
+        function logOut() {
             localStorage.removeItem('idiathub_user');
             location.reload();
-        };
+        }
 
         function setupPresence() {
             const onlineRef = ref(db, 'online/' + currentUser);
@@ -273,19 +291,19 @@
             }
         }
 
-        window.saveProfile = async () => {
+        async function saveProfile() {
             const status = document.getElementById('statusInput').value.trim();
             const color = document.getElementById('colorInput').value;
             await update(ref(db, `users/${currentUser}`), { status: status, chatColor: color });
             alert('Изменения сохранены на сервере!');
-        };
+        }
 
-        window.switchTab = (tabName) => {
+        function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.content-page').forEach(page => page.classList.remove('active'));
 
-            const btnMap = { 'feed': 0, 'channels': 1, 'chat': 2, 'profile': 3 };
-            if(btnMap[tabName] !== undefined) document.querySelectorAll('.tab-btn')[btnMap[tabName]].classList.add('active');
+            const btnMap = { 'feed': 'tabBtnFeed', 'channels': 'tabBtnChannels', 'chat': 'tabBtnChat', 'profile': 'tabBtnProfile' };
+            if(btnMap[tabName]) document.getElementById(btnMap[tabName]).classList.add('active');
 
             const pageElement = document.getElementById(`${tabName}Page`);
             if(pageElement) pageElement.classList.add('active');
@@ -295,16 +313,16 @@
                 msgs.scrollTop = msgs.scrollHeight;
                 isInitialChatLoad = false;
             }
-        };
+        }
 
         function createPostElement(id, post, databasePath) {
             let playerHtml = '';
             if (post.mediaType === 'image') {
-                playerHtml = `<img src="${post.url}" class="img-preview" alt="photo" onclick="registerView('${databasePath}/${id}', ${post.views || 0})">`;
+                playerHtml = `<img src="${post.url}" class="img-preview" alt="photo" data-path="${databasePath}/${id}" data-views="${post.views || 0}">`;
             } else if (post.mediaType === 'youtube') {
-                playerHtml = `<iframe src="https://www.youtube.com/embed/${post.url.split('/').pop().split('v=').pop()}" allowfullscreen onclick="registerView('${databasePath}/${id}', ${post.views || 0})"></iframe>`;
+                playerHtml = `<iframe src="https://www.youtube.com/embed/${post.url.split('/').pop().split('v=').pop()}" allowfullscreen data-path="${databasePath}/${id}" data-views="${post.views || 0}"></iframe>`;
             } else {
-                playerHtml = `<video src="${post.url}" controls playsinline preload="metadata" onplay="registerView('${databasePath}/${id}', ${post.views || 0})"></video>`;
+                playerHtml = `<video src="${post.url}" controls playsinline preload="metadata" data-path="${databasePath}/${id}" data-views="${post.views || 0}"></video>`;
             }
 
             const likeCount = post.likes ? Object.keys(post.likes).length : 0;
@@ -320,21 +338,43 @@
                     <div class="v-author">От: <b>${post.author}</b></div>
                 </div>
                 <div class="v-actions">
-                    <button class="action-btn ${hasLiked}" onclick="toggleLike('${databasePath}/${id}', ${hasLiked ? 'true' : 'false'})">❤️ <span>${likeCount}</span></button>
+                    <button class="action-btn ${hasLiked}" data-like-path="${databasePath}/${id}" data-liked="${hasLiked ? 'true' : 'false'}">❤️ <span>${likeCount}</span></button>
                     <span>👁️ ${post.views || 0} просмотров</span>
-                    ${isOwner ? `<button class="delete-btn" onclick="deletePost('${databasePath}/${id}')">🗑️ Удалить</button>` : ''}
+                    ${isOwner ? `<button class="delete-btn" data-del-path="${databasePath}/${id}">🗑️ Удалить</button>` : ''}
                 </div>
                 <div class="comments-section">
                     <div class="comments-list" id="comments-${id}">...</div>
                     <div class="comment-input-block">
                         <input type="text" id="comment-in-${id}" placeholder="Коммент...">
-                        <button class="btn" style="padding:4px 10px;" onclick="sendComment('${id}', '${databasePath}', ${post.views || 0})">></button>
+                        <button class="btn btn-send-comment" style="padding:4px 10px;" data-id="${id}" data-dbpath="${databasePath}" data-views="${post.views || 0}">></button>
                     </div>
                 </div>
             `;
 
+            // Навешиваем клики программно внутри карточки
+            const mediaEl = card.querySelector('img, video, iframe');
+            if(mediaEl && mediaEl.tagName !== 'VIDEO') {
+                mediaEl.addEventListener('click', () => registerView(mediaEl.dataset.path, parseInt(mediaEl.dataset.views)));
+            } else if (mediaEl && mediaEl.tagName === 'VIDEO') {
+                mediaEl.addEventListener('play', () => registerView(mediaEl.dataset.path, parseInt(mediaEl.dataset.views)));
+            }
+
+            card.querySelector('.action-btn').addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                toggleLike(btn.dataset.likePath, btn.dataset.liked === 'true');
+            });
+
+            if(isOwner) {
+                card.querySelector('.delete-btn').addEventListener('click', (e) => deletePost(e.currentTarget.dataset.delPath));
+            }
+
+            card.querySelector('.btn-send-comment').addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                sendComment(btn.dataset.id, btn.dataset.dbpath, parseInt(btn.dataset.views));
+            });
+
             onValue(ref(db, `comments/${id}`), (snap) => {
-                const container = document.getElementById(`comments-${id}`);
+                const container = card.querySelector(`#comments-${id}`);
                 if(!container) return;
                 container.innerHTML = '';
                 if(!snap.exists()) {
@@ -345,48 +385,57 @@
                     const val = c.val();
                     const cId = c.key;
                     const canDelete = val.author === currentUser || isOwner;
-                    container.innerHTML += `
-                        <div class="comment-item">
-                            <span><b>${val.author}:</b> ${val.text}</span>
-                            ${canDelete ? `<span style="color:#ff3333; cursor:pointer;" onclick="deleteComment('${id}', '${cId}')">❌</span>` : ''}
-                        </div>`;
+                    
+                    const cItem = document.createElement('div');
+                    cItem.className = 'comment-item';
+                    cItem.innerHTML = `<span><b>${val.author}:</b> ${val.text}</span>`;
+                    
+                    if(canDelete) {
+                        const delX = document.createElement('span');
+                        delX.style.color = '#ff3333';
+                        delX.style.cursor = 'pointer';
+                        delX.innerText = ' ❌';
+                        delX.addEventListener('click', () => deleteComment(id, cId));
+                        cItem.appendChild(delX);
+                    }
+                    container.appendChild(cItem);
                 });
             });
 
             return card;
         }
 
-        window.registerView = (path, currentViews) => {
+        function registerView(path, currentViews) {
             update(ref(db, path), { views: currentViews + 1 });
-        };
+        }
 
-        window.toggleLike = (path, isLiked) => {
+        function toggleLike(path, isLiked) {
             const likeRef = ref(db, path + '/likes/' + currentUser);
             if(isLiked) remove(likeRef);
             else set(likeRef, true);
-        };
+        }
 
-        window.deletePost = async (path) => {
+        async function deletePost(path) {
             if(confirm('Удалить пост?')) {
                 const id = path.split('/').pop();
                 await remove(ref(db, path));
                 await remove(ref(db, `comments/${id}`));
             }
-        };
+        }
 
-        window.sendComment = async (id, databasePath, currentViews) => {
+        async function sendComment(id, databasePath, currentViews) {
             const input = document.getElementById(`comment-in-${id}`);
             if(!input.value.trim()) return;
             await push(ref(db, `comments/${id}`), { author: currentUser, text: input.value.trim() });
             input.value = '';
             registerView(databasePath + '/' + id, currentViews);
-        };
+        }
 
-        window.deleteComment = async (postId, commentId) => {
+        async function deleteComment(postId, commentId) {
             if(confirm('Удалить комментарий?')) {
                 await remove(ref(db, `comments/${postId}/${commentId}`));
             }
-        };
+        }
 
         function loadGlobalFeed() {
             onValue(ref(db, 'global_feed'), (snap) => {
@@ -413,7 +462,7 @@
                     const item = document.createElement('div');
                     item.className = 'channel-item';
                     item.innerHTML = `<div><b>Канал: ${username}</b><div style="font-size:12px; color:#aaa;">${uData.status || ''}</div></div><span>📺</span>`;
-                    item.onclick = () => openChannel(username, uData.status);
+                    item.addEventListener('click', () => openChannel(username, uData.status));
                     list.appendChild(item);
                 });
             });
@@ -440,7 +489,7 @@
             });
         }
 
-        window.addPost = async () => {
+        async function addPost() {
             const title = document.getElementById('vTitle').value.trim();
             const fileInput = document.getElementById('vFile').files[0];
             const urlInput = document.getElementById('vUrl').value.trim();
@@ -490,9 +539,9 @@
 
             pubBtn.disabled = false;
             statusDiv.innerText = '';
-        };
+        }
 
-        window.sendMsg = async () => {
+        async function sendMsg() {
             const input = document.getElementById('msgInput');
             if (!input.value.trim()) return;
             
@@ -506,7 +555,7 @@
                 time: Date.now()
             });
             input.value = '';
-        };
+        }
 
         function loadChat() {
             onValue(query(ref(db, 'chat'), limitToLast(30)), (snap) => {
@@ -531,13 +580,13 @@
             });
         }
 
-        window.toggleModal = (id, scope = 'global') => {
+        function toggleModal(id, scope = 'global') {
             currentUploadScope = scope;
             const modal = document.getElementById(id);
             modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
             document.getElementById('modalTargetTitle').innerText = scope === 'global' ? 'Добавить в ленту' : 'Загрузить на свой канал';
             document.getElementById('uploadStatus').innerText = '';
-        };
+        }
     </script>
 </body>
 </html>
