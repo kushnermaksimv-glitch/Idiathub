@@ -46,6 +46,8 @@
         /* Чат */
         #chatPage.active { display: flex; flex-direction: column; padding: 0; }
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { background: #1e1e1e; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; word-break: break-word; }
+        .msg-meta { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
         #inputArea { display: flex; padding: 10px; gap: 8px; background: #1a1a1a; border-top: 1px solid #333; }
         
         /* Вкладка Профиль */
@@ -172,15 +174,15 @@
     </div>
 
     <script type="module">
+        // Логируем ошибки в консоль вместо раздражающего алерта
         window.onerror = function(msg, url, line) {
-            alert("Ошибка: " + msg + "\nСтрока: " + line);
+            console.error("Глобальная ошибка скрипта:", msg, "на строке:", line);
             return true;
         };
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, set, onValue, get, remove, update, query, limitToLast, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // ТВОИ НАСТОЯЩИЕ НАСТРОЙКИ БАЗЫ ДАННЫХ
         const firebaseConfig = {
             apiKey: "AIzaSyBUYZ4EPbiqApxTfe_dEjQl5eCL3tb1lM4",
             authDomain: "fir-bd773.firebaseapp.com",
@@ -219,7 +221,9 @@
         document.getElementById('btnSendMsg').addEventListener('click', () => sendMsg());
         document.getElementById('msgInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') sendMsg(); });
 
-        if (currentUser) enterApp();
+        if (currentUser) {
+            enterApp();
+        }
 
         function enterApp() {
             document.getElementById('authScreen').style.display = 'none';
@@ -246,14 +250,16 @@
             if(!user || !pass) return alert('Заполните все поля!');
             if(/[.#$\[\]]/.test(user)) return alert('Имя содержит недопустимые спецсимволы!');
 
-            const snapshot = await get(ref(db, 'users/' + user));
-            if(snapshot.exists()) return alert('Этот логин уже занят кем-то другим!');
+            try {
+                const snapshot = await get(ref(db, 'users/' + user));
+                if(snapshot.exists()) return alert('Этот логин уже занят!');
 
-            await set(ref(db, 'users/' + user), { password: pass, status: "Всем привет!", chatColor: "#00ffcc" });
-            
-            currentUser = user;
-            localStorage.setItem('idiathub_user', currentUser);
-            enterApp();
+                await set(ref(db, 'users/' + user), { password: pass, status: "Всем привет!", chatColor: "#00ffcc" });
+                
+                currentUser = user;
+                localStorage.setItem('idiathub_user', currentUser);
+                enterApp();
+            } catch(e) { alert("Ошибка регистрации: " + e.message); }
         }
 
         async function authLogin() {
@@ -261,12 +267,14 @@
             const pass = document.getElementById('loginPass').value.trim();
             if(!user || !pass) return alert('Введите данные!');
 
-            const snapshot = await get(ref(db, 'users/' + user));
-            if(snapshot.exists() && snapshot.val().password === pass) {
-                currentUser = user;
-                localStorage.setItem('idiathub_user', currentUser);
-                enterApp();
-            } else { alert('Неверный логин или пароль!'); }
+            try {
+                const snapshot = await get(ref(db, 'users/' + user));
+                if(snapshot.exists() && snapshot.val().password === pass) {
+                    currentUser = user;
+                    localStorage.setItem('idiathub_user', currentUser);
+                    enterApp();
+                } else { alert('Неверный логин или пароль!'); }
+            } catch(e) { alert("Ошибка входа: " + e.message); }
         }
 
         function logOut() {
@@ -300,7 +308,7 @@
             const status = document.getElementById('statusInput').value.trim();
             const color = document.getElementById('colorInput').value;
             await update(ref(db, `users/${currentUser}`), { status: status, chatColor: color });
-            alert('Изменения сохранены на сервере!');
+            alert('Изменения сохранены!');
         }
 
         function switchTab(tabName) {
@@ -325,7 +333,8 @@
             if (post.mediaType === 'image') {
                 playerHtml = `<img src="${post.url}" class="img-preview" alt="photo" data-path="${databasePath}/${id}" data-views="${post.views || 0}">`;
             } else if (post.mediaType === 'youtube') {
-                playerHtml = `<iframe src="https://www.youtube.com/embed/${post.url.split('/').pop().split('v=').pop()}" allowfullscreen data-path="${databasePath}/${id}" data-views="${post.views || 0}"></iframe>`;
+                let videoId = post.url.split('/').pop().split('v=').pop().split('&')[0];
+                playerHtml = `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen data-path="${databasePath}/${id}" data-views="${post.views || 0}"></iframe>`;
             } else {
                 playerHtml = `<video src="${post.url}" controls playsinline preload="metadata" data-path="${databasePath}/${id}" data-views="${post.views || 0}"></video>`;
             }
@@ -344,11 +353,11 @@
                 </div>
                 <div class="v-actions">
                     <button class="action-btn ${hasLiked}" data-like-path="${databasePath}/${id}" data-liked="${hasLiked ? 'true' : 'false'}">❤️ <span>${likeCount}</span></button>
-                    <span>👁️ ${post.views || 0} просмотров</span>
+                    <span class="views-counter">👁️ ${post.views || 0} просмотров</span>
                     ${isOwner ? `<button class="delete-btn" data-del-path="${databasePath}/${id}">🗑️ Удалить</button>` : ''}
                 </div>
                 <div class="comments-section">
-                    <div class="comments-list" id="comments-${id}">...</div>
+                    <div class="comments-list" id="comments-${id}">Загрузка...</div>
                     <div class="comment-input-block">
                         <input type="text" id="comment-in-${id}" placeholder="Коммент...">
                         <button class="btn btn-send-comment" style="padding:4px 10px;" data-id="${id}" data-dbpath="${databasePath}" data-views="${post.views || 0}">></button>
@@ -357,10 +366,12 @@
             `;
 
             const mediaEl = card.querySelector('img, video, iframe');
-            if(mediaEl && mediaEl.tagName !== 'VIDEO') {
-                mediaEl.addEventListener('click', () => registerView(mediaEl.dataset.path, parseInt(mediaEl.dataset.views)));
-            } else if (mediaEl && mediaEl.tagName === 'VIDEO') {
-                mediaEl.addEventListener('play', () => registerView(mediaEl.dataset.path, parseInt(mediaEl.dataset.views)));
+            if (mediaEl) {
+                if (mediaEl.tagName === 'VIDEO') {
+                    mediaEl.addEventListener('play', () => registerView(mediaEl.dataset.path, parseInt(mediaEl.dataset.views), card));
+                } else {
+                    mediaEl.addEventListener('click', () => registerView(mediaEl.dataset.path, parseInt(mediaEl.dataset.views), card));
+                }
             }
 
             card.querySelector('.action-btn').addEventListener('click', (e) => {
@@ -409,8 +420,15 @@
             return card;
         }
 
-        function registerView(path, currentViews) {
-            update(ref(db, path), { views: currentViews + 1 });
+        function registerView(path, currentViews, cardElement) {
+            const nextViews = currentViews + 1;
+            update(ref(db, path), { views: nextViews });
+            
+            const mediaEl = cardElement.querySelector('img, video, iframe');
+            if(mediaEl) mediaEl.dataset.views = nextViews;
+            
+            const counterEl = cardElement.querySelector('.views-counter');
+            if(counterEl) counterEl.innerText = `👁️ ${nextViews} просмотров`;
         }
 
         function toggleLike(path, isLiked) {
@@ -432,7 +450,6 @@
             if(!input.value.trim()) return;
             await push(ref(db, `comments/${id}`), { author: currentUser, text: input.value.trim() });
             input.value = '';
-            registerView(databasePath + '/' + id, currentViews);
         }
 
         async function deleteComment(postId, commentId) {
@@ -449,8 +466,11 @@
                     grid.innerHTML = '<div style="text-align:center; padding:30px; color:#aaa;">Лента пуста</div>';
                     return;
                 }
-                Object.keys(snap.val()).reverse().forEach(id => {
-                    grid.appendChild(createPostElement(id, snap.val()[id], 'global_feed'));
+                const data = snap.val();
+                Object.keys(data).reverse().forEach(id => {
+                    if(data[id]) {
+                        grid.appendChild(createPostElement(id, data[id], 'global_feed'));
+                    }
                 });
             });
         }
@@ -461,13 +481,16 @@
                 list.innerHTML = '';
                 if(!snap.exists()) return;
                 
-                Object.keys(snap.val()).forEach(username => {
-                    const uData = snap.val()[username];
-                    const item = document.createElement('div');
-                    item.className = 'channel-item';
-                    item.innerHTML = `<div><b>Канал: ${username}</b><div style="font-size:12px; color:#aaa;">${uData.status || ''}</div></div><span>📺</span>`;
-                    item.addEventListener('click', () => openChannel(username, uData.status));
-                    list.appendChild(item);
+                const data = snap.val();
+                Object.keys(data).forEach(username => {
+                    const uData = data[username];
+                    if(uData) {
+                        const item = document.createElement('div');
+                        item.className = 'channel-item';
+                        item.innerHTML = `<div><b>Канал: ${username}</b><div style="font-size:12px; color:#aaa;">${uData.status || ''}</div></div><span>📺</span>`;
+                        item.addEventListener('click', () => openChannel(username, uData.status));
+                        list.appendChild(item);
+                    }
                 });
             });
         }
@@ -487,8 +510,11 @@
                     grid.innerHTML = '<div style="text-align:center; padding:30px; color:#aaa;">Нет видео</div>';
                     return;
                 }
-                Object.keys(snap.val()).reverse().forEach(id => {
-                    grid.appendChild(createPostElement(id, snap.val()[id], `channels/${username}`));
+                const data = snap.val();
+                Object.keys(data).reverse().forEach(id => {
+                    if(data[id]) {
+                        grid.appendChild(createPostElement(id, data[id], `channels/${username}`));
+                    }
                 });
             });
         }
@@ -549,16 +575,18 @@
             const input = document.getElementById('msgInput');
             if (!input.value.trim()) return;
             
-            const userSnap = await get(ref(db, 'users/' + currentUser));
-            const userColor = userSnap.exists() ? (userSnap.val().chatColor || '#00ffcc') : '#00ffcc';
+            try {
+                const userSnap = await get(ref(db, 'users/' + currentUser));
+                const userColor = userSnap.exists() ? (userSnap.val().chatColor || '#00ffcc') : '#00ffcc';
 
-            push(ref(db, 'chat'), {
-                name: currentUser,
-                text: input.value.trim(),
-                color: userColor,
-                time: Date.now()
-            });
-            input.value = '';
+                await push(ref(db, 'chat'), {
+                    name: currentUser,
+                    text: input.value.trim(),
+                    color: userColor,
+                    time: Date.now()
+                });
+                input.value = '';
+            } catch(e) { alert("Ошибка отправки чата: " + e.message); }
         }
 
         function loadChat() {
@@ -569,11 +597,13 @@
 
                 snap.forEach(s => {
                     const d = s.val();
-                    msgs.innerHTML += `
-                        <div class="msg">
-                            <div class="msg-meta" style="color:${d.color || '#00ffcc'};">● ${d.name}</div>
-                            <div>${d.text}</div>
-                        </div>`;
+                    if(d) {
+                        msgs.innerHTML += `
+                            <div class="msg">
+                                <div class="msg-meta" style="color:${d.color || '#00ffcc'};">● ${d.name}</div>
+                                <div>${d.text}</div>
+                            </div>`;
+                    }
                 });
                 
                 msgs.scrollTop = msgs.scrollHeight;
