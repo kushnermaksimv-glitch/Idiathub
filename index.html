@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Idiathub 3.0 - Исправленный</title>
+    <title>Idiathub 3.0 - Вечные Аккаунты</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #121212; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -75,7 +75,6 @@
 </head>
 <body>
 
-    <!-- Звук уведомления -->
     <audio id="notifSound" src="https://assets.mixkit.co/active_storage/sfx/2357/2357-84.wav" preload="auto"></audio>
 
     <!-- Авторизация -->
@@ -85,14 +84,14 @@
             <input type="text" id="loginUser" placeholder="Логин (Имя)">
             <input type="password" id="loginPass" placeholder="Пароль">
             <button class="btn" onclick="authLogin()">Войти</button>
-            <button class="secondary-btn" onclick="toggleAuthForms(true)">Регистрация</button>
+            <button class="secondary-btn" onclick="toggleAuthForms(true)">Регистрация нового аккаунта</button>
         </div>
         
         <div class="auth-box" id="regForm" style="display: none;">
-            <h2>Регистрация</h2>
-            <input type="text" id="regUser" placeholder="Логин">
-            <input type="password" id="regPass" placeholder="Пароль">
-            <button class="btn" onclick="authRegister()">Создать аккаунт</button>
+            <h2>Создать вечный аккаунт</h2>
+            <input type="text" id="regUser" placeholder="Придумайте Логин">
+            <input type="password" id="regPass" placeholder="Придумайте Пароль">
+            <button class="btn" onclick="authRegister()">Зарегистрироваться</button>
             <button class="secondary-btn" onclick="toggleAuthForms(false)">Назад ко входу</button>
         </div>
     </div>
@@ -103,7 +102,6 @@
         <div id="onlineCount" style="color:#aaa; font-size:12px;">В сети: --</div>
     </header>
 
-    <!-- Основные страницы -->
     <div class="content-container">
         <!-- Лента -->
         <section id="feedPage" class="content-page">
@@ -146,7 +144,7 @@
                     <input type="color" id="colorInput" value="#ff3333">
                 </div>
                 <button class="btn" onclick="saveProfile()">Сохранить</button>
-                <button class="btn" style="background:#ff3333; color:white; margin-top:20px;" onclick="logOut()">Выйти</button>
+                <button class="btn" style="background:#ff3333; color:white; margin-top:20px;" onclick="logOut()">Выйти из системы</button>
             </div>
         </section>
     </div>
@@ -168,7 +166,7 @@
                 <input type="file" id="vFile" accept="video/*,image/*" style="width:100%; background:none; border:none; padding:0;">
             </div>
             <div style="text-align: center; color: #888; font-size: 11px;">— ИЛИ —</div>
-            <input type="text" id="vUrl" placeholder="Ссылка на YouTube или картинку">
+            <input type="text" id="vUrl" placeholder="Ссылка на YouTube или медиафайл">
             <div id="uploadStatus" style="text-align:center; color:#00ffcc; font-size:13px;"></div>
             <button class="btn" id="publishBtn" onclick="addPost()">Выложить</button>
             <button class="btn" style="background:#383838; color:white;" onclick="toggleModal('uploadModal')">Отмена</button>
@@ -176,7 +174,6 @@
     </div>
 
     <script type="module">
-        // Ловим любые скрытые ошибки, чтобы они всплывали на экране телефона
         window.onerror = function(msg, url, line) {
             alert("Ошибка: " + msg + "\nСтрока: " + line);
             return true;
@@ -185,7 +182,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, set, onValue, get, remove, update, query, limitToLast, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Если у тебя ТОЛЬКО Датабаза без Auth-сервиса, этого конфига достаточно
         const firebaseConfig = {
             databaseURL: "ТВОЯ_ССЫЛКА_НА_DATABASE" 
         };
@@ -218,21 +214,25 @@
             document.getElementById('regForm').style.display = showReg ? 'flex' : 'none';
         };
 
+        // ВЕЧНАЯ РЕГИСТРАЦИЯ НА СЕРВЕРЕ БАЗЫ
         window.authRegister = async () => {
             const user = document.getElementById('regUser').value.trim();
             const pass = document.getElementById('regPass').value.trim();
-            if(!user || !pass) return alert('Заполните поля!');
-            if(/[.#$\[\]]/.test(user)) return alert('Имя содержит недопустимые знаки');
+            if(!user || !pass) return alert('Заполните все поля!');
+            if(/[.#$\[\]]/.test(user)) return alert('Имя содержит недопустимые спецсимволы!');
 
             const snapshot = await get(ref(db, 'users/' + user));
-            if(snapshot.exists()) return alert('Имя уже занято!');
+            if(snapshot.exists()) return alert('Этот логин уже занят кем-то другим!');
 
+            // Сохраняем в облако навсегда
             await set(ref(db, 'users/' + user), { password: pass, status: "Всем привет!", chatColor: "#00ffcc" });
+            
             currentUser = user;
             localStorage.setItem('idiathub_user', currentUser);
             enterApp();
         };
 
+        // НАДЕЖНЫЙ ВХОД ЧЕРЕЗ СВЕРКУ С ОБЛАКОМ
         window.authLogin = async () => {
             const user = document.getElementById('loginUser').value.trim();
             const pass = document.getElementById('loginPass').value.trim();
@@ -277,7 +277,7 @@
             const status = document.getElementById('statusInput').value.trim();
             const color = document.getElementById('colorInput').value;
             await update(ref(db, `users/${currentUser}`), { status: status, chatColor: color });
-            alert('Сохранено!');
+            alert('Изменения сохранены на сервере!');
         };
 
         window.switchTab = (tabName) => {
